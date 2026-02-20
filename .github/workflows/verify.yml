@@ -16,10 +16,6 @@ on:
         description: Run Gitleaks (Secret scanner)
         default: true
         type: boolean
-      hadolint:
-        description: Run hadolint (Dockerfile linter)
-        default: false
-        type: boolean
       lychee:
         description: Run lychee (Broken link finder)
         default: true
@@ -118,16 +114,6 @@ jobs:
     runs-on: ubuntu-slim
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - run: |
-          echo "inputs: '${INPUT_VALUE}'"
-          echo "needs: '${NEEDS_VALUE}'"
-          echo "if result: '${IF_VALUE}'"
-          echo "if input: '${IF_INPUT_VALUE}'"
-        env:
-          NEEDS_VALUE: ${{ needs.is-valid-run.outputs.check }}
-          INPUT_VALUE: ${{ inputs.gitleaks || true }}
-          IF_VALUE: ${{ ((inputs.gitleaks || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
-          IF_INPUT_VALUE: (${{ inputs.gitleaks || true }} == true) && (${{ needs.is-valid-run.outputs.check }} == 'true')
       - name: Extract Tool Versions
         id: tool-versions
         run: |
@@ -145,26 +131,6 @@ jobs:
           echo "${GITLEAKS_SHASUM} gitleaks.tar.gz" | sha256sum --check
           tar -xzf gitleaks.tar.gz gitleaks
           ./gitleaks dir --verbose --redact .
-  hadolint:
-    needs: is-valid-run
-    if: ${{ ((inputs.hadolint || false) == true) && (needs.is-valid-run.outputs.check == 'true') }}
-    runs-on: ubuntu-latest # Docker is not available on ubuntu-slim
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - run: |
-          echo "inputs: '${INPUT_VALUE}'"
-          echo "needs: '${NEEDS_VALUE}'"
-          echo "if result: '${IF_VALUE}'"
-          echo "if input: '${IF_INPUT_VALUE}'"
-        env:
-          NEEDS_VALUE: ${{ needs.is-valid-run.outputs.check }}
-          INPUT_VALUE: ${{ inputs.hadolint || false }}
-          IF_VALUE: ${{ ((inputs.hadolint || false) == true) && (needs.is-valid-run.outputs.check == 'true') }}
-          IF_INPUT_VALUE: (${{ inputs.hadolint || false }} == true) && (${{ needs.is-valid-run.outputs.check }} == 'true')
-      - name: Lint Dockerfile
-        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
-        with:
-          dockerfile: "Dockerfile"
   lychee:
     needs: is-valid-run
     if: ${{ ((inputs.lychee || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}

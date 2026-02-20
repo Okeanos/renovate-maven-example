@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>4.0.0</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>com.grottendieck</groupId>
+	<artifactId>${{ values.projectName }}</artifactId>
+	<name>${{ values.projectName }}</name>
+	<!--
+		See https://maven.apache.org/guides/mini/guide-maven-ci-friendly.html
+		We want to be able to set the version property externally
+	-->
+	<version>${revision}</version>
+	<description>Show interactions between Maven, Renovate and Backstage Templages</description>
+
+	<properties>
+		<java.version>21</java.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>${project.build.sourceEncoding}</project.reporting.outputEncoding>
+		<maven.compiler.release>${java.version}</maven.compiler.release>
+		<maven.compiler.encoding>${project.build.sourceEncoding}</maven.compiler.encoding>
+		<toolchain.jdk.version>[${java.version},${parsedVersion.nextMajorVersion})</toolchain.jdk.version>
+
+		<build-helper-maven-plugin.version>3.4.0</build-helper-maven-plugin.version>
+		<error-prone.version>2.47.0</error-prone.version>
+		<jacoco-maven-plugin.version>0.8.14</jacoco-maven-plugin.version>
+		<json.version>20250517</json.version>
+		<jspecify.version>1.0.0</jspecify.version>
+		<junit-bom.version>${junit-jupiter.version}</junit-bom.version>
+		<junit-jupiter.version>6.0.0</junit-jupiter.version>
+		<logback.version>1.5.0</logback.version>
+		<logstash-logback-encoder.version>9.0</logstash-logback-encoder.version>
+		<maven-jxr-plugin.version>3.6.0</maven-jxr-plugin.version>
+		<maven-project-info-reports-plugin.version>3.9.0</maven-project-info-reports-plugin.version>
+		<maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
+		<maven-surefire-report-plugin.version>${maven-surefire-plugin.version}</maven-surefire-report-plugin.version>
+		<maven-toolchains-plugin.version>3.2.0</maven-toolchains-plugin.version>
+		<mockito.version>5.21.0</mockito.version>
+		<mockito-junit-jupiter.version>${mockito.version}</mockito-junit-jupiter.version>
+		<nullaway.version>0.13.0</nullaway.version>
+	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>net.logstash.logback</groupId>
+				<artifactId>logstash-logback-encoder</artifactId>
+				<version>${logstash-logback-encoder.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.json</groupId>
+				<artifactId>json</artifactId>
+				<version>${json.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.jspecify</groupId>
+				<artifactId>jspecify</artifactId>
+				<version>${jspecify.version}</version>
+			</dependency>
+			<dependency>
+				<groupId>org.mockito</groupId>
+				<artifactId>mockito-junit-jupiter</artifactId>
+				<version>${mockito-junit-jupiter.version}</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
+	<dependencies>
+		<dependency>
+			<groupId>net.logstash.logback</groupId>
+			<artifactId>logstash-logback-encoder</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>json</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.jspecify</groupId>
+			<artifactId>jspecify</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-restclient</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-tomcat</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.mockito</groupId>
+			<artifactId>mockito-junit-jupiter</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webmvc-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-jxr-plugin</artifactId>
+					<version>${maven-jxr-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-project-info-reports-plugin</artifactId>
+					<version>${maven-project-info-reports-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-surefire-report-plugin</artifactId>
+					<version>${maven-surefire-report-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-toolchains-plugin</artifactId>
+					<version>${maven-toolchains-plugin.version}</version>
+				</plugin>
+				<plugin>
+					<groupId>org.jacoco</groupId>
+					<artifactId>jacoco-maven-plugin</artifactId>
+					<version>${jacoco-maven-plugin.version}</version>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+
+		<plugins>
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>build-helper-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>parse-version</goal>
+						</goals>
+						<configuration>
+							<versionString>${java.version}</versionString>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!--
+				Maven Toolchains has to be declared before the compiler plugin
+				or else the wrong JDK/JVM will be used for compilation.
+			-->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-toolchains-plugin</artifactId>
+				<executions>
+					<execution>
+						<goals>
+							<goal>select-jdk-toolchain</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<!--
+						Without fork=true the build fails on macOS with the Maven Wrapper.
+						For some reason (according to minimal tests) not setting fork=true still works on Linux.
+					-->
+					<fork>true</fork>
+					<compilerArgs>
+						<!--
+							Treat all warnings as errors as proposed in https://github.com/google/error-prone/issues/424
+						-->
+						<arg>-Werror</arg>
+						<arg>-XDcompilePolicy=simple</arg>
+						<arg>--should-stop=ifError=FLOW</arg>
+						<!--
+							For details about the standard bug patterns check:
+							- ErrorProne: https://errorprone.info/bugpatterns
+							- NullAway: https://github.com/uber/NullAway/wiki/Configuration
+							Syntax as described here: https://errorprone.info/docs/flags#maven
+							May not work on Windows on GitBash because of path conversion issues (Unix vs Windows)
+							- https://github.com/apache/maven-compiler-plugin/issues/784
+							- https://github.com/codehaus-plexus/plexus-compiler/issues/351
+						-->
+						<arg>
+							-Xplugin:ErrorProne \
+							<!-- Recommended experimental errors. -->
+							-Xep:DeduplicateConstants \
+							-Xep:DepAnn \
+							-Xep:InsecureCryptoUsage \
+							-Xep:IterablePathParameter \
+							-Xep:LongLiteralLowerCaseSuffix \
+							-Xep:PackageLocation:ERROR \
+							-Xep:StaticQualifiedUsingExpression \
+							-Xep:SystemExitOutsideMain \
+							<!-- Recommended experimental warnings. -->
+							-Xep:AvoidObjectArrays \
+							-Xep:CatchingUnchecked \
+							-Xep:CheckedExceptionNotThrown \
+							-Xep:DifferentNameButSame \
+							-Xep:EqualsBrokenForNull \
+							-Xep:InitializeInline \
+							-Xep:InterfaceWithOnlyStatics \
+							-Xep:MissingDefault \
+							-Xep:PreferJavaTimeOverload \
+							-Xep:PreferredInterfaceType \
+							-Xep:RedundantThrows \
+							-Xep:StatementSwitchToExpressionSwitch \
+							-Xep:SystemOut \
+							-Xep:TimeUnitMismatch \
+							-Xep:UnnecessarilyFullyQualified \
+							-Xep:UnnecessarilyUsedValue \
+							-Xep:UnnecessarilyVisible \
+							-Xep:UnnecessaryAnonymousClass \
+							-Xep:UnnecessaryDefaultInEnumSwitch \
+							<!-- -Xep:UnnecessaryFinal \ -->
+							-Xep:UnnecessaryOptionalGet \
+							-Xep:UnusedException \
+							-Xep:Varifier \
+							-Xep:YodaCondition \
+							<!-- \
+								Recommended experimental suggestions.
+								Since these are typically reliable, the severity has been increased to WARN.
+							--> \
+							-Xep:FieldCanBeFinal:WARN \
+							-Xep:FieldCanBeLocal:WARN \
+							-Xep:FieldCanBeStatic:WARN \
+							-Xep:FieldMissingNullable:WARN \
+							-Xep:ParameterMissingNullable:WARN \
+							-Xep:PrivateConstructorForUtilityClass:WARN \
+							-Xep:RemoveUnusedImports:WARN \
+							-Xep:ReturnMissingNullable:WARN \
+							-Xep:ReturnsNullCollection:WARN \
+							-Xep:UseEnumSwitch:WARN \
+							<!-- Don't care about tests -->
+							-XepExcludedPaths:.*/src/test/.* \
+							<!-- Config for Nullaway --> \
+							<!-- See https://github.com/uber/NullAway/wiki/Configuration#annotated-packages -->
+							-XepOpt:NullAway:AnnotatedPackages=com.grottendieck \
+							<!--
+								Used to avoid having to explicitly initialize all Spring @Values fields.
+								@Autowired is already filtered by default by NullAway, but @Value isn't.
+							-->
+							-XepOpt:NullAway:ExcludedFieldAnnotations=org.springframework.beans.factory.annotation.Value
+						</arg>
+						<!--
+							Compiler options for Java >= 16 declared in a Maven Toolchains compatible fashion
+							See https://errorprone.info/docs/installation#maven
+						-->
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+						<arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+						<arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+						<arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+					</compilerArgs>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>com.google.code.findbugs</groupId>
+							<artifactId>jsr305</artifactId>
+							<version>${findbugs-jsr305.version}</version>
+						</path>
+						<path>
+							<groupId>com.google.errorprone</groupId>
+							<artifactId>error_prone_core</artifactId>
+							<version>${error-prone.version}</version>
+						</path>
+						<path>
+							<groupId>com.uber.nullaway</groupId>
+							<artifactId>nullaway</artifactId>
+							<version>${nullaway.version}</version>
+						</path>
+					</annotationProcessorPaths>
+					<showDeprecation>true</showDeprecation>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+					<parallel>classes</parallel>
+					<threadCount>10</threadCount>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>default-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>default-report</id>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+</project>
