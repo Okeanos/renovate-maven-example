@@ -14,11 +14,7 @@
 	<groupId>com.grottendieck</groupId>
 	<artifactId>${{ values.projectName }}</artifactId>
 	<name>${{ values.projectName }}</name>
-	<!--
-		See https://maven.apache.org/guides/mini/guide-maven-ci-friendly.html
-		We want to be able to set the version property externally
-	-->
-	<version>${revision}</version>
+	<version>0.0.1-SNAPSHOT</version>
 	<description>Show interactions between Maven, Renovate and Backstage Templages</description>
 
 	<properties>
