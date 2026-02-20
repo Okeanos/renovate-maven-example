@@ -1,0 +1,248 @@
+# yaml-language-server:$schema=https://json.schemastore.org/github-workflow.json
+# https://docs.github.com/en/actions/writing-workflows
+name: Verify
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      editorconfig:
+        description: Run EditorConfig linter
+        default: true
+        type: boolean
+      gitleaks:
+        description: Run Gitleaks (Secret scanner)
+        default: true
+        type: boolean
+      hadolint:
+        description: Run hadolint (Dockerfile linter)
+        default: false
+        type: boolean
+      lychee:
+        description: Run lychee (Broken link finder)
+        default: true
+        type: boolean
+      markdownlint:
+        description: Run Markdown linter
+        default: true
+        type: boolean
+      shellcheck:
+        description: Run shellcheck (shell script linter)
+        default: true
+        type: boolean
+      taplo:
+        description: Run taplo (TOML linter)
+        default: true
+        type: boolean
+      yamllint:
+        description: Run yamllint (YAML linter)
+        default: true
+        type: boolean
+
+# https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#permissions-for-the-github_token
+permissions:
+  contents: read
+
+# Cancel duplicate runs for this workflow if they happen for the same commit
+# Thus should help with duplicate runs caused by PRs, e.g. because of Renovate
+# See https://github.com/orgs/community/discussions/181292 for limitations
+# See https://github.com/orgs/community/discussions/57827 for workarounds for PR/Branch-Push duplication workarounds with external PRs
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  is-valid-run:
+    runs-on: ubuntu-slim
+    outputs:
+      check: ${{ steps.check-result.outputs.output }}
+    steps:
+      - name: Check for duplicate runs
+        id: check-result
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_NAME: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_NAME: ${{ github.event.pull_request.base.repo.full_name }}
+          PR_ACTION: ${{ github.event.pull_request.action }}
+        run: |
+          # assume this is a duplicate run
+          result=false
+          # run if not a pull-request
+          if [[ "${EVENT_NAME}" != 'pull_request' ]]; then
+            result=true
+          elif [[ "${EVENT_NAME}" == 'pull_request' ]]; then
+            # run if this PR was triggered from an external repo
+            if [[ "${HEAD_NAME}" != "${BASE_NAME}" ]]; then
+              result=true
+            # run if this is a PR and marked as:
+            elif [[ "${PR_ACTION}" == "ready_for_review" ]] || \
+                  [[ "${PR_ACTION}" =~ ^(un)?labeled$ ]] || \
+                  [[ "${PR_ACTION}" == "reopened" ]]; \
+            then
+              result=true
+            fi
+          fi
+          echo "output=${result}" >> "$GITHUB_OUTPUT"
+      - name: Test result
+        run: |
+          echo "result: '${{ steps.check-result.outputs.output }}'"
+
+  editorconfig:
+    needs: is-valid-run
+    if: ${{ ((inputs.editorconfig || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Extract Tool Versions
+        id: tool-versions
+        run: |
+          ec_version=$(grep -F 'editorconfig-checker' .mise.toml | cut -d '=' -f2 | cut -d '#' -f1 | xargs)
+          ec_shasum=$(grep -F 'editorconfig-checker' .mise.toml | cut -d '=' -f3 | xargs)
+          echo "ec_version=${ec_version}" >> "$GITHUB_OUTPUT"
+          echo "ec_shasum=${ec_shasum}" >> "$GITHUB_OUTPUT"
+      - name: Run EditorConfig Checker
+        env:
+          EDITORCONFIG_CHECKER_VERSION: ${{ steps.tool-versions.outputs.ec_version }}
+          EDITORCONFIG_CHECKER_SHASUM: ${{ steps.tool-versions.outputs.ec_shasum }}
+        run: |
+          curl --fail --silent --show-error --location --output editorconfig.tar.gz \
+            https://github.com/editorconfig-checker/editorconfig-checker/releases/download/v${EDITORCONFIG_CHECKER_VERSION}/ec-linux-amd64.tar.gz
+          echo "${EDITORCONFIG_CHECKER_SHASUM} editorconfig.tar.gz" | sha256sum --check
+          tar -xzf editorconfig.tar.gz bin/ec-linux-amd64
+          ./bin/ec-linux-amd64 -f github-actions
+  gitleaks:
+    needs: is-valid-run
+    if: ${{ ((inputs.gitleaks || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - run: |
+          echo "inputs: '${INPUT_VALUE}'"
+          echo "needs: '${NEEDS_VALUE}'"
+          echo "if result: '${IF_VALUE}'"
+          echo "if input: '${IF_INPUT_VALUE}'"
+        env:
+          NEEDS_VALUE: ${{ needs.is-valid-run.outputs.check }}
+          INPUT_VALUE: ${{ inputs.gitleaks || true }}
+          IF_VALUE: ${{ ((inputs.gitleaks || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+          IF_INPUT_VALUE: (${{ inputs.gitleaks || true }} == true) && (${{ needs.is-valid-run.outputs.check }} == 'true')
+      - name: Extract Tool Versions
+        id: tool-versions
+        run: |
+          gitleaks_version=$(grep -F 'gitleaks' .mise.toml | cut -d '=' -f2 | cut -d '#' -f1 | xargs)
+          gitleaks_shasum=$(grep -F 'gitleaks' .mise.toml | cut -d '=' -f3 | xargs)
+          echo "gitleaks_version=${gitleaks_version}" >> "$GITHUB_OUTPUT"
+          echo "gitleaks_shasum=${gitleaks_shasum}" >> "$GITHUB_OUTPUT"
+      - name: Install Gitleaks
+        env:
+          GITLEAKS_VERSION: ${{ steps.tool-versions.outputs.gitleaks_version }}
+          GITLEAKS_SHASUM: ${{ steps.tool-versions.outputs.gitleaks_shasum }}
+        run: |
+          curl --fail --silent --show-error --location --output gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz
+          echo "${GITLEAKS_SHASUM} gitleaks.tar.gz" | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks dir --verbose --redact .
+  hadolint:
+    needs: is-valid-run
+    if: ${{ ((inputs.hadolint || false) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-latest # Docker is not available on ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - run: |
+          echo "inputs: '${INPUT_VALUE}'"
+          echo "needs: '${NEEDS_VALUE}'"
+          echo "if result: '${IF_VALUE}'"
+          echo "if input: '${IF_INPUT_VALUE}'"
+        env:
+          NEEDS_VALUE: ${{ needs.is-valid-run.outputs.check }}
+          INPUT_VALUE: ${{ inputs.hadolint || false }}
+          IF_VALUE: ${{ ((inputs.hadolint || false) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+          IF_INPUT_VALUE: (${{ inputs.hadolint || false }} == true) && (${{ needs.is-valid-run.outputs.check }} == 'true')
+      - name: Lint Dockerfile
+        uses: hadolint/hadolint-action@2332a7b74a6de0dda2e2221d575162eba76ba5e5 # v3.3.0
+        with:
+          dockerfile: "Dockerfile"
+  lychee:
+    needs: is-valid-run
+    if: ${{ ((inputs.lychee || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Extract Tool Versions
+        id: tool-versions
+        run: |
+          lychee_version=$(grep -F 'lychee' .mise.toml | cut -d '=' -f2 | cut -d '#' -f1 | xargs)
+          echo "lychee_version=${lychee_version}" >> "$GITHUB_OUTPUT"
+      - name: Restore lychee cache
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        with:
+          path: .lycheecache
+          key: cache-lychee-${{ github.sha }}
+          restore-keys: cache-lychee-
+      - uses: lycheeverse/lychee-action@a8c4c7cb88f0c7386610c35eb25108e448569cb0 # v2.7.0
+        with:
+          fail: false
+          failIfEmpty: false
+          format: markdown
+          jobSummary: true
+          lycheeVersion: v${{ steps.tool-versions.outputs.lychee_version }}
+          args: "--base . --cache --max-cache-age 21d ."
+  markdownlint:
+    needs: is-valid-run
+    if: ${{ ((inputs.markdownlint || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: DavidAnson/markdownlint-cli2-action@07035fd053f7be764496c0f8d8f9f41f98305101 # v22.0.0
+  shellcheck:
+    needs: is-valid-run
+    if: ${{ ((inputs.shellcheck || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Extract Tool Versions
+        id: tool-versions
+        run: |
+          shellcheck_version=$(grep -F 'shellcheck' .mise.toml | cut -d '=' -f2 | cut -d '#' -f1 | xargs)
+          echo "shellcheck_version=${shellcheck_version}" >> "$GITHUB_OUTPUT"
+      - uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+        with:
+          version: v${{ steps.tool-versions.outputs.shellcheck_version }}
+  taplo:
+    needs: is-valid-run
+    if: ${{ ((inputs.taplo || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Extract Tool Versions
+        id: tool-versions
+        run: |
+          taplo_version=$(grep -F 'taplo' .mise.toml | cut -d '=' -f3 | cut -d '}' -f1 | xargs)
+          taplo_shasum=$(grep -F 'taplo' .mise.toml | cut -d '=' -f4 | xargs)
+          echo "taplo_version=${taplo_version}" >> "$GITHUB_OUTPUT"
+          echo "taplo_shasum=${taplo_shasum}" >> "$GITHUB_OUTPUT"
+      - name: Run Taplo
+        env:
+          TAPLO_VERSION: ${{ steps.tool-versions.outputs.taplo_version }}
+          TAPLO_SHASUM: ${{ steps.tool-versions.outputs.taplo_shasum }}
+        run: |
+          curl --fail --silent --show-error --location --output taplo.gz \
+            https://github.com/tamasfe/taplo/releases/download/${TAPLO_VERSION}/taplo-linux-x86_64.gz
+          echo "${TAPLO_SHASUM} taplo.gz" | sha256sum --check
+          gunzip --decompress taplo.gz
+          chmod +x ./taplo
+          ./taplo format --check --diff
+          ./taplo check --default-schema-catalogs
+  yamllint:
+    needs: is-valid-run
+    if: ${{ ((inputs.yamllint || true) == true) && (needs.is-valid-run.outputs.check == 'true') }}
+    runs-on: ubuntu-slim
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run yamllint
+        run: |
+          pip install yamllint
+          yamllint .
